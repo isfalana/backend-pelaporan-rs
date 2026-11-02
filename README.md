@@ -1,221 +1,344 @@
-# Backend API - Laporan RS Permata Cirebon 🏥
+# Backend Pelaporan RS
 
-Aplikasi Laporan Internal RS Permata Cirebon adalah sistem pencatatan masalah, pengaduan, dan permintaan tindakan antar unit di rumah sakit. Repositori ini berisi **Backend RESTful API** yang bertugas sebagai pelayan data (*data server*) dan pengelola logika bisnis untuk aplikasi klien (Frontend) berbasis seluler.
+Backend API untuk mendukung sistem dashboard pelaporan rumah sakit, pengelolaan data, dan sinkronisasi informasi dari layanan terkait.
 
----
+Aplikasi ini dikembangkan menggunakan Node.js dan Express.js, dengan Sequelize sebagai ORM untuk berinteraksi dengan database. Sistem juga mendukung proses sinkronisasi data terjadwal untuk membantu menjaga ketersediaan data pada dashboard.
 
-## 🛠️ Stack Teknologi (Tech Stack)
+## Daftar Isi
 
-Sistem *backend* ini dibangun menggunakan arsitektur modern standar industri:
+- [Tentang Proyek](#tentang-proyek)
+- [Fitur Utama](#fitur-utama)
+- [Teknologi](#teknologi)
+- [Arsitektur Singkat](#arsitektur-singkat)
+- [Persyaratan Sistem](#persyaratan-sistem)
+- [Instalasi](#instalasi)
+- [Konfigurasi Environment](#konfigurasi-environment)
+- [Menjalankan Aplikasi](#menjalankan-aplikasi)
+- [API Dashboard](#api-dashboard)
+- [Sinkronisasi Data](#sinkronisasi-data)
+- [Struktur Proyek](#struktur-proyek)
+- [Keamanan](#keamanan)
+- [Pengembangan](#pengembangan)
+- [Kontribusi](#kontribusi)
+- [Lisensi](#lisensi)
 
-1.  **Node.js & Express.js:** Lingkungan eksekusi dan *framework* server. Dipilih karena sangat ringan, asinkron (cocok untuk banyak *request* bersamaan), dan menggunakan format JSON secara bawaan (sangat kompatibel dengan Flutter).
-2.  **PostgreSQL (via Docker):** Sistem Manajemen Basis Data Relasional (RDBMS). Sangat tangguh untuk menjaga integritas data rumah sakit yang kompleks (seperti relasi antar unit, pengguna, dan laporan).
-3.  **Sequelize ORM:** Alat bantu (*Object-Relational Mapping*) di Node.js untuk berinteraksi dengan PostgreSQL menggunakan kode JavaScript, bukan *query* SQL manual. Ini sangat memudahkan proses *Migration* (pembuatan tabel) dan *Seeding* (pengisian data awal).
-4.  **Bcrypt.js:** Modul untuk mengenkripsi (mengacak) kata sandi (*password*) pengguna sebelum disimpan ke *database*, sehingga data akun tetap aman meskipun *database* bocor.
-5.  **JSON Web Token (JWT):** Standar keamanan untuk otentikasi. Mengubah identitas pengguna yang berhasil *login* menjadi "tiket digital" yang digunakan untuk mengakses fitur-fitur aplikasi.
+## Tentang Proyek
 
----
+Backend Pelaporan RS merupakan layanan backend yang menyediakan API untuk kebutuhan dashboard pelaporan rumah sakit.
 
-## 🏗️ Struktur Tabel Database (Skema PostgreSQL)
+Aplikasi bertanggung jawab menangani permintaan dari frontend, mengakses database, serta menjalankan proses sinkronisasi data melalui layanan yang terintegrasi.
 
-Database bernama `db_laporan_rs` dirancang dengan 7 tabel utama yang saling berelasi:
+Proyek ini dirancang agar proses pengolahan data dan penyediaan API dapat dikelola secara terstruktur, sehingga memudahkan pengembangan, pemeliharaan, dan pengoperasian aplikasi.
 
-1.  **`role`**: Tabel hak akses (Admin, User/PIC).
-2.  **`kategori`**: Tabel jenis laporan (Perbaikan, Pengadaan, Komplain, dll).
-3.  **`tindak_lanjut`**: Tabel master jenis/prosedur tindak lanjut (opsional).
-4.  **`unit`**: Tabel daftar bagian di rumah sakit (IT, Umum, SDM, dll).
-5.  **`users`**: Tabel akun masuk (*login*). Menyimpan NIK, sandi (terenkripsi), dan *Foreign Key* yang merujuk ke tabel `unit` dan `role`.
-6.  **`laporan`**: Tabel transaksi utama pengaduan. Berisi kegiatan, prioritas, *deadline*, status (Pending/On Progress/Done), dan berelasi ke Unit pelapor.
-7.  **`detail_tindakan`**: Tabel riwayat log/catatan tindakan per laporan. Mencatat ID laporan, ID *user* yang mengerjakan, deskripsi pengerjaan, dan *timestamp*.
+## Fitur Utama
 
----
+- **REST API:** Menyediakan endpoint untuk mengambil data dashboard.
+- **Integrasi Database:** Menggunakan Sequelize untuk pengelolaan akses database.
+- **Sinkronisasi Data:** Mendukung proses sinkronisasi data dari layanan sumber.
+- **Penjadwalan Otomatis:** Mendukung cron job untuk menjalankan proses sinkronisasi terjadwal.
+- **Pengelolaan Data Dashboard:** Mendukung kebutuhan data IGD, rawat jalan, rawat inap, booking, jadwal, dan laboratorium.
+- **Autentikasi:** Mendukung mekanisme autentikasi berbasis token sesuai implementasi aplikasi.
+- **Logging:** Mendukung pencatatan aktivitas dan informasi operasional aplikasi.
+- **Konfigurasi Environment:** Mendukung pemisahan konfigurasi aplikasi dari kode sumber.
 
-## 🚀 Panduan Instalasi dan Menjalankan Server Lokal
+## Teknologi
 
-Ikuti langkah-langkah detail berikut untuk menjalankan *backend* di komputer pengembangan (*localhost*) Anda.
+Teknologi yang digunakan dalam proyek ini meliputi:
 
-### 1. Persiapan Perangkat Lunak (Prerequisites)
-Pastikan aplikasi berikut sudah terinstal di komputer Anda:
-*   [Node.js](https://nodejs.org/) (Sertakan juga NPM).
-*   [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Harus dalam keadaan "Running" di latar belakang).
-*   *Code Editor* seperti Visual Studio Code (VS Code).
-*   Alat penguji API seperti [Postman](https://www.postman.com/) atau ekstensi *Thunder Client* di VS Code.
+| Teknologi | Kegunaan |
+|---|---|
+| Node.js | Runtime JavaScript pada sisi server |
+| Express.js | Framework backend dan REST API |
+| Sequelize | ORM untuk interaksi dengan database |
+| Redis | Dukungan penyimpanan atau mekanisme internal sesuai konfigurasi aplikasi |
+| JWT | Mekanisme autentikasi berbasis token |
+| Pino HTTP | Logging permintaan HTTP |
+| Helmet | Security middleware untuk HTTP |
+| Cron Job | Penjadwalan proses otomatis |
+| npm | Manajemen dependensi Node.js |
+| Git | Version control |
 
-### 2. Kloning dan Instalasi Ketergantungan (*Dependencies*)
-Buka terminal (CMD/PowerShell) atau terminal terintegrasi di VS Code, arahkan ke folder proyek ini, lalu instal semua *package* npm yang dibutuhkan:
+Teknologi dan dependensi yang benar-benar aktif mengikuti implementasi serta konfigurasi pada repositori.
+
+## Arsitektur Singkat
+
+Secara umum, alur kerja aplikasi adalah sebagai berikut:
+
+1. Frontend mengirimkan permintaan HTTP ke backend.
+2. Middleware memproses permintaan, termasuk autentikasi apabila diperlukan.
+3. Controller menangani permintaan dan meneruskan proses ke service.
+4. Service menjalankan logika bisnis, mengakses database, atau berkomunikasi dengan layanan eksternal.
+5. Backend mengembalikan respons kepada frontend.
+6. Proses sinkronisasi terjadwal mengambil dan memproses data sesuai konfigurasi yang berlaku.
+
+## Persyaratan Sistem
+
+Sebelum menjalankan aplikasi, siapkan:
+
+- Node.js dengan versi yang kompatibel dengan proyek.
+- npm.
+- Database yang digunakan oleh aplikasi.
+- Redis apabila dibutuhkan oleh konfigurasi aplikasi.
+- Akses jaringan ke layanan sumber data apabila diperlukan.
+- File environment dengan konfigurasi yang sesuai.
+
+## Instalasi
+
+### 1. Clone repositori
+
+```bash
+git clone https://github.com/isfalana/backend-pelaporan-rs.git
+```
+
+### 2. Masuk ke direktori proyek
+
+```bash
+cd backend-pelaporan-rs
+```
+
+### 3. Instal dependensi
+
 ```bash
 npm install
 ```
 
-### 3. Konfigurasi Kredensial (.env)
-Buat sebuah file baru bernama `.env` tepat di direktori terluar (*root*) proyek Anda. Salin dan tempelkan variabel berikut ke dalamnya. (File ini mengatur rahasia server dan koneksi *database*):
+### 4. Siapkan konfigurasi environment
 
-```env
-# --- KONFIGURASI DATABASE (POSTGRESQL) ---
-DB_USERNAME=postgres
-DB_PASSWORD=1122
-DB_DATABASE=db_laporan_rs
-DB_HOST=127.0.0.1
-DB_PORT=5432
-DB_DIALECT=postgres
+Buat file `.env` berdasarkan kebutuhan konfigurasi aplikasi.
 
-# --- KONFIGURASI SERVER EXPRESS ---
-PORT=3000
+Jangan menggunakan kredensial produksi yang sebenarnya di dalam contoh konfigurasi atau dokumentasi publik.
 
-# --- KONFIGURASI KEAMANAN (JWT) ---
-# Kunci ini digunakan untuk menandatangani token login. (Ubah untuk mode produksi)
-JWT_SECRET=rahasia_super_aman_rs_permata_2026
+### 5. Siapkan database
+
+Pastikan database telah dibuat dan konfigurasi koneksinya sesuai dengan lingkungan tempat aplikasi dijalankan.
+
+Jika proyek menggunakan migration Sequelize, jalankan migration sesuai perintah dan prosedur yang tersedia pada `package.json` serta konfigurasi proyek.
+
+## Konfigurasi Environment
+
+Aplikasi menggunakan konfigurasi environment untuk memisahkan pengaturan operasional dari kode sumber.
+
+Contoh variabel berikut merupakan ilustrasi dan perlu disesuaikan dengan implementasi aktual:
+
+```dotenv
+NODE_ENV=development
+PORT_EXPRESS=999
+
+DB_HOST=
+DB_PORT=
+DB_NAME=
+DB_USER=
+DB_PASSWORD=
+
+JWT_SECRET=
 ```
 
-### 4. Menghidupkan Database (Docker)
-Kita akan menyalakan server PostgreSQL secara instan menggunakan Docker. Pastikan Docker Desktop terbuka, lalu jalankan perintah ini di terminal:
+**Penting:**
+- Gunakan nama variabel yang sesuai dengan kode aplikasi.
+- Jangan mengunggah file `.env` yang berisi kredensial asli ke GitHub.
+- Simpan password, token, dan secret menggunakan environment variables atau secret manager pada lingkungan deployment.
+- Pastikan `.env` tercantum dalam `.gitignore`.
+- Gunakan `.env.example` untuk mendokumentasikan variabel yang dibutuhkan tanpa menyertakan nilai rahasia.
+
+## Menjalankan Aplikasi
+
+Setelah dependensi dan konfigurasi disiapkan, jalankan aplikasi menggunakan script yang tersedia pada `package.json`.
+
+Periksa daftar script terlebih dahulu:
+
 ```bash
-docker-compose up -d
+npm run
 ```
-*Catatan: Parameter `-d` (detached) membuat server database berjalan di latar belakang sehingga Anda tetap bisa menggunakan terminal tersebut.*
 
-### 5. Membangun Tabel & Menyuntik Data (Migration & Seeding)
-Setelah database menyala (biasanya di *port* `5432`), kita perlu membentuk tabel-tabelnya (Migrasi) dan memasukkan data percobaan awal (Seeding):
+Kemudian gunakan perintah yang sesuai dengan lingkungan aplikasi, misalnya script pengembangan atau script produksi yang telah didefinisikan dalam proyek.
 
-*   **Jalankan Migrasi (Membuat 7 Tabel):**
-    
-```bash
-    npx sequelize-cli db:migrate
-    
-```
-*   **Jalankan Seeder (Memasukkan data dummy):**
-    
-```bash
-    npx sequelize-cli db:seed:all
-    
-```
-    *Catatan Seeder: Perintah ini akan otomatis membuatkan dua akun untuk Anda coba nanti:*
-    *   *Akun 1 - NIK: `NIK-001` (Admin IT) | Password: `123456`*
-    *   *Akun 2 - NIK: `NIK-002` (Staff Umum) | Password: `123456`*
+Pastikan koneksi database, konfigurasi environment, dan dependensi layanan telah tersedia sebelum menjalankan aplikasi.
 
-### 6. Menjalankan Server Node.js
-Ketik perintah berikut untuk menghidupkan *backend API*:
-```bash
-npx nodemon index.js
+## API Dashboard
+
+Backend menyediakan endpoint untuk kebutuhan data dashboard, termasuk area berikut:
+
+| Modul | Endpoint |
+|---|---|
+| IGD | `/dashboard/data/igd` |
+| Rawat Jalan | `/dashboard/data/rajal` |
+| Rawat Inap | `/dashboard/data/ranap` |
+| Booking | `/dashboard/data/booking` |
+| Jadwal | `/dashboard/data/jadwal` |
+
+Endpoint laboratorium dan endpoint lain mengikuti route yang tersedia pada implementasi aplikasi.
+
+### Autentikasi
+
+Endpoint yang dilindungi autentikasi harus diakses menggunakan mekanisme autentikasi yang ditetapkan aplikasi.
+
+Jika endpoint memerlukan JWT, klien harus mengirimkan token melalui header HTTP yang sesuai, misalnya:
+
+```http
+Authorization: Bearer <ACCESS_TOKEN>
 ```
-Jika sukses, terminal akan menampilkan pesan: `🚀 Server berjalan di http://localhost:3000`. Biarkan terminal ini tetap terbuka selama Anda mengembangkan aplikasi.
+
+Jangan menuliskan token asli dalam dokumentasi, kode contoh, atau repositori publik.
+
+> Daftar endpoint di atas merupakan ringkasan endpoint dashboard yang diketahui. Metode HTTP, parameter, format respons, dan kebutuhan autentikasi setiap endpoint perlu mengacu pada implementasi route yang sebenarnya.
+
+## Sinkronisasi Data
+
+Aplikasi mendukung proses sinkronisasi data untuk memenuhi kebutuhan dashboard.
+
+Proses sinkronisasi dapat dijalankan melalui service dan penjadwalan otomatis sesuai konfigurasi proyek.
+
+Area data yang didukung mencakup:
+
+- IGD.
+- Rawat jalan.
+- Rawat inap.
+- Booking.
+- Jadwal.
+- Laboratorium.
+
+Implementasi sinkronisasi perlu memperhatikan:
+
+- Validasi data dari layanan sumber.
+- Penanganan kesalahan saat permintaan API gagal.
+- Konsistensi data antara sumber dan database lokal.
+- Pencegahan duplikasi berdasarkan aturan masing-masing modul.
+- Logging proses sinkronisasi.
+- Pelaporan kegagalan agar tidak dianggap berhasil ketika proses sebenarnya gagal.
+
+Jadwal sinkronisasi, rentang tanggal, dan aturan pemrosesan mengikuti konfigurasi aplikasi.
+
+## Struktur Proyek
+
+Struktur direktori utama yang digunakan dalam proyek:
+
+```text
+backend-pelaporan-rs/
+├── config/
+├── controllers/
+├── middleware/
+├── migrations/
+├── models/
+├── routes/
+├── seeders/
+├── index.js
+├── package.json
+├── package-lock.json
+├── Dockerfile
+├── docker-compose.yml
+├── .dockerignore
+├── .gitignore
+└── README.md
+```
+
+Keterangan:
+
+| Direktori/File | Fungsi |
+|---|---|
+| `config/` | Konfigurasi aplikasi dan layanan |
+| `controllers/` | Penanganan permintaan HTTP |
+| `middleware/` | Middleware untuk kebutuhan aplikasi |
+| `migrations/` | Perubahan struktur database |
+| `models/` | Definisi model database |
+| `routes/` | Definisi endpoint API |
+| `seeders/` | Data awal atau data pendukung database |
+| `index.js` | Entry point aplikasi |
+| `package.json` | Metadata proyek, dependensi, dan script npm |
+| `Dockerfile` | Instruksi pembuatan image Docker |
+| `docker-compose.yml` | Konfigurasi layanan Docker Compose |
+| `.dockerignore` | Daftar file yang dikecualikan dari build context Docker |
+| `.gitignore` | Daftar file yang tidak dilacak oleh Git |
+
+Struktur di atas menggambarkan direktori utama proyek. Isi dan tanggung jawab setiap komponen mengikuti kode aktual.
+
+## Keamanan
+
+Keamanan menjadi bagian penting dalam pengembangan dan pengoperasian aplikasi backend.
+
+Praktik yang perlu diterapkan meliputi:
+
+1. **Perlindungan kredensial:** Jangan menyimpan password, token, API key, atau JWT secret di repositori publik.
+2. **Autentikasi dan otorisasi:** Pastikan setiap endpoint yang memerlukan perlindungan memiliki kontrol akses yang sesuai.
+3. **Validasi input:** Validasi parameter, body, dan query sebelum diproses.
+4. **Keamanan database:** Gunakan akun database dengan hak akses minimum yang diperlukan.
+5. **HTTPS:** Gunakan koneksi HTTPS pada deployment yang diakses melalui internet.
+6. **Security headers:** Terapkan konfigurasi Helmet sesuai kebutuhan aplikasi.
+7. **Pembatasan permintaan:** Lindungi endpoint sensitif dari penyalahgunaan dan permintaan berlebihan.
+8. **Error handling:** Hindari mengirimkan stack trace dan informasi internal kepada klien.
+9. **Keamanan dependensi:** Periksa dependensi secara berkala menggunakan audit keamanan.
+10. **Logging:** Hindari mencatat kredensial dan informasi sensitif dalam log.
+11. **Pengelolaan konfigurasi:** Pisahkan konfigurasi pengembangan, pengujian, dan produksi.
+12. **Backup dan pemulihan:** Siapkan mekanisme backup serta prosedur pemulihan data.
+
+Contoh pemeriksaan dependensi:
+
+```bash
+npm audit
+```
+
+Hasil audit perlu ditinjau sebelum menerapkan pembaruan dependensi.
+
+**Catatan:** Dokumentasi praktik keamanan tidak berarti seluruh kontrol tersebut telah diterapkan atau diverifikasi pada kode saat ini. Status keamanannya perlu dipastikan melalui audit dan pengujian.
+
+## Pengembangan
+
+Kontribusi dan pengembangan sebaiknya mengikuti alur kerja Git yang terstruktur.
+
+Alur yang disarankan:
+
+1. Buat branch untuk perubahan yang dikerjakan.
+2. Implementasikan perubahan sesuai kebutuhan.
+3. Jalankan pengujian yang relevan.
+4. Periksa perubahan sebelum melakukan commit.
+5. Push branch ke GitHub.
+6. Buat Pull Request menuju branch tujuan.
+7. Tinjau perubahan sebelum melakukan merge.
+
+Contoh pembuatan branch:
+
+```bash
+git switch -c feature/nama-fitur
+```
+
+Contoh pemeriksaan perubahan:
+
+```bash
+git status
+git diff
+```
+
+Contoh commit:
+
+```bash
+git add .
+git commit -m "feat: deskripsi perubahan"
+```
+
+Sebelum menggunakan `git add .`, pastikan file rahasia, file lokal, dan artefak yang tidak diperlukan tidak ikut dimasukkan ke commit.
+
+## Kontribusi
+
+Kontribusi pengembangan dapat dilakukan melalui Pull Request.
+
+Sebelum mengajukan perubahan:
+
+- Pastikan perubahan memiliki tujuan yang jelas.
+- Hindari memasukkan kredensial atau data sensitif.
+- Jalankan pengujian yang relevan.
+- Sertakan penjelasan perubahan.
+- Periksa dampak terhadap modul dan proses sinkronisasi lain.
+
+Setiap perubahan perlu ditinjau sebelum digabungkan ke branch utama.
+
+## Lisensi
+
+Lisensi proyek belum dicantumkan dalam dokumentasi ini.
+
+Sebelum menentukan lisensi, pastikan pemilik proyek memiliki kewenangan untuk menentukan ketentuan penggunaan dan distribusi kode.
+
+Jika proyek akan dipublikasikan secara terbuka, tambahkan file `LICENSE` setelah lisensi yang sesuai dipilih.
 
 ---
 
-## 🔗 Panduan Integrasi (Pemasangan) dengan Aplikasi Flutter
-
-Bagian ini menjelaskan bagaimana menyambungkan aplikasi *frontend* Flutter Anda agar dapat mengonsumsi (menggunakan) data dari *backend* Node.js ini.
-
-### Syarat di Sisi Flutter
-Di proyek Flutter Anda (misal: proyek `laporan_rs`), pastikan Anda sudah menambahkan *package* `dio` (untuk komunikasi HTTP) dan `shared_preferences` (untuk menyimpan token lokal) di dalam `pubspec.yaml`.
-
-### Langkah 1: Konfigurasi Base URL (di Flutter)
-Karena aplikasi Node.js berjalan di komputer Anda sendiri (localhost) pada *port* 3000, Anda harus mengatur URL tujuan di dalam kode Flutter (`ApiService`).
-
-*   **PENTING UNTUK EMULATOR ANDROID:**
-    Jika Anda menjalankan Flutter di Emulator Android bawaan Android Studio, emulator tersebut **tidak mengenali** `localhost` atau `127.0.0.1` sebagai komputer fisik Anda. Anda **wajib** menggunakan IP khusus `10.0.2.2`.
-*   **PENTING UNTUK CHROME/WEB:**
-    Jika menjalankan Flutter di Chrome/Edge, gunakan `127.0.0.1`.
-
-**Contoh kode di Flutter (`lib/app/data/services/api_service.dart`):**
-```dart
-import 'package:dio/dio.dart';
-
-class ApiService {
-  static final Dio _dio = Dio(
-    BaseOptions(
-      // --- PILIH SALAH SATU BERDASARKAN DEVICE YANG DIPAKAI ---
-      
-      // Jika Run di Chrome (Web):
-      // baseUrl: 'http://127.0.0.1:3000/api', 
-      
-      // Jika Run di Emulator Android Studio:
-      baseUrl: 'http://10.0.2.2:3000/api',
-      
-      // Jika Run di HP Fisik (HP dan Laptop harus satu WiFi):
-      // baseUrl: 'http://<IP_ADDRESS_LAPTOP_ANDA>:3000/api',
-
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 10),
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    ),
-  );
-  // ... (kode interceptor JWT dilanjutkan di sini)
-}
-```
-
-### Langkah 2: Menguji Fitur Login (Contoh Integrasi)
-Berikut adalah gambaran bagaimana Controller di Flutter (`AuthController`) menembak *endpoint* Node.js yang telah kita buat:
-
-```dart
-// Contoh di Flutter (AuthController.dart)
-import 'package:dio/dio.dart';
-
-Future<void> login(String nik, String password) async {
-  try {
-    // 1. Flutter mengirim HTTP POST ke Node.js (http://10.0.2.2:3000/api/auth/login)
-    final response = await ApiService._dio.post('/auth/login', data: {
-      "id_nik": nik,
-      "password": password
-    });
-
-    // 2. Jika sukses (status 200), Node.js mengembalikan JSON berisi Token JWT
-    if (response.statusCode == 200) {
-      String jwtToken = response.data['token']; // Ambil token dari JSON Node.js
-      String namaUnit = response.data['data']['nama_unit'];
-      
-      // 3. Simpan token ke memori HP menggunakan SharedPreferences
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      await prefs.setString('jwt_token', jwtToken);
-      
-      // 4. Pindah ke Halaman Dashboard
-      Get.offAllNamed(Routes.DASHBOARD);
-    }
-  } on DioException catch (e) {
-    // Menangkap pesan error dari Node.js (misal: "Password Salah" atau 401 Unauthorized)
-    String errorMsg = e.response?.data['message'] ?? 'Gagal menghubungi server';
-    Get.snackbar('Gagal', errorMsg);
-  }
-}
-```
-
-## 📡 Daftar Endpoint API (Versi 1)
-
-*Endpoint* ini yang akan dipanggil oleh *package* `dio` dari Flutter.
-
-### 1. Autentikasi Login
-*   **Metode:** `POST`
-*   **URL:** `http://localhost:3000/api/auth/login` (Sesuaikan `localhost` dengan aturan IP Emulator di atas).
-*   **Tujuan:** Memvalidasi `id_nik` dan `password`, lalu mengembalikan tiket akses (JWT).
-*   **Format Request (Body - JSON):**
-    
-```json
-    {
-      "id_nik": "NIK-001",
-      "password": "123456"
-    }
-    
-```
-*   **Contoh Response Sukses (JSON):**
-    
-```json
-    {
-        "status": "success",
-        "message": "Login berhasil",
-        "token": "eyJhbGciOiJIUzI1NiIsInR...", 
-        "data": {
-            "id_nik": "NIK-001",
-            "nama_karyawan": "Admin IT",
-            "jabatan": "Kepala IT",
-            "nama_unit": "Information Technology",
-            "nama_role": "Admin"
-        }
-    }
-    
-```
-
----
-
-_Dokumentasi ini dibuat untuk memandu pengembang dalam memelihara dan mengembangkan fitur API RS Permata Cirebon secara berkelanjutan._
+**Backend Pelaporan RS**  
+Node.js · Express.js · Sequelize
