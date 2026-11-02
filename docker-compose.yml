@@ -14,5 +14,20 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  backend-api:
+    build: .
+    container_name: rs_permata_backend
+    restart: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres-db
+    env_file:
+      - .env
+    environment:
+      # Menimpa DB_HOST lokal Anda agar terhubung ke container PostgreSQL
+      DB_HOST: postgres-db
+      PORT: 3000
+
 volumes:
   postgres_data:

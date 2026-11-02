@@ -1,7 +1,7 @@
 module.exports = (sequelize, DataTypes) => {
   const Laporan = sequelize.define('Laporan', {
     id_laporan: { type: DataTypes.STRING(50), primaryKey: true },
-    tgl_laporan: DataTypes.DATE,
+    tgl_kejadian: DataTypes.DATE,
     
     id_unit_pelapor: DataTypes.STRING(20),
     id_nik_pelapor: DataTypes.STRING(50), // BARU

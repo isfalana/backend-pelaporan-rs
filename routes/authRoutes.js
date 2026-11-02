@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const { login } = require('../controllers/authController');
+const { login, getProfile } = require('../controllers/authController');
+const authMiddleware = require('../middleware/authMiddleware');
 
-// URL akhir akan menjadi: POST /api/auth/login
 router.post('/login', login);
+router.get('/profile', authMiddleware, getProfile);
 
 module.exports = router;
