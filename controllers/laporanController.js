@@ -1,4 +1,5 @@
 const { Laporan, Unit, Users, Kategori, TindakLanjut, DetailTindakan } = require('../models');
+const admin = require('../utils/firebase'); // BARU: Import Firebase Admin SDK
 
 exports.getAllLaporan = async (req, res) => {
   try {
@@ -81,6 +82,7 @@ exports.createLaporan = async (req, res) => {
 
     const id_laporan = `LAP-${Date.now().toString().slice(-6)}`;
 
+    // 1. Simpan Laporan ke PostgreSQL
     const newLaporan = await Laporan.create({
       id_laporan,
       tgl_kejadian: new Date(),
@@ -96,6 +98,7 @@ exports.createLaporan = async (req, res) => {
       status: 'Pending'
     });
 
+    // 2. Ambil data lengkap (termasuk JOIN nama unit) untuk JSON & Notifikasi
     const item = await Laporan.findByPk(newLaporan.id_laporan, {
       include: [
         { model: Unit, as: 'unit_pelapor' },
@@ -105,6 +108,40 @@ exports.createLaporan = async (req, res) => {
         { model: Kategori, as: 'kategori' }
       ]
     });
+
+    // =========================================================================
+    // 3. BLOK NOTIFIKASI FCM KE UNIT PIC (Tujuan)
+    // =========================================================================
+    try {
+      // Cari semua akun petugas yang ada di unit tujuan PIC tersebut
+      const targetUsers = await Users.findAll({ where: { id_unit: id_unit_pic } });
+
+      // Filter FCM token (Buang token yang kosong atau token bypass web)
+      const validTokens = targetUsers
+        .map(u => u.fcm_token)
+        .filter(token => token && token !== 'dummy_fcm_token_web' && token !== 'dummy_token_fallback');
+
+      if (validTokens.length > 0) {
+        const payloadNotifikasi = {
+          tokens: validTokens, // Multicast (kirim ke semua HP di unit tersebut sekaligus)
+          notification: {
+            title: `🚨 Laporan Baru: Prioritas ${item.prioritas}`,
+            body: `Dari Unit ${item.unit_pelapor.nama_unit}: ${item.perihal}`
+          },
+          data: {
+            id_laporan: item.id_laporan,
+            click_action: "FLUTTER_NOTIFICATION_CLICK"
+          }
+        };
+
+        const responseFCM = await admin.messaging().sendEachForMulticast(payloadNotifikasi);
+        console.log(`[FCM - Create] Berhasil: ${responseFCM.successCount}, Gagal: ${responseFCM.failureCount}`);
+      }
+    } catch (fcmError) {
+      console.error('Gagal memproses Push Notification ke PIC:', fcmError);
+      // Try-catch dipisah agar jika Firebase error, input laporan ke Postgres tetap berstatus 201 Success
+    }
+    // =========================================================================
 
     return res.status(201).json({
       status: 'success',
@@ -122,7 +159,11 @@ exports.updateStatus = async (req, res) => {
     const { id } = req.params;
     const { status, keterangan, id_nik_pic } = req.body;
 
-    const laporan = await Laporan.findByPk(id);
+    // Tambahkan include user_pelapor agar kita bisa mengambil fcm_token pelapor
+    const laporan = await Laporan.findByPk(id, {
+      include: [{ model: Users, as: 'user_pelapor' }]
+    });
+    
     if (!laporan) {
       return res.status(404).json({ status: 'error', message: 'Laporan tidak ditemukan' });
     }
@@ -135,6 +176,34 @@ exports.updateStatus = async (req, res) => {
     }
 
     await laporan.save();
+
+    // =========================================================================
+    // BLOK NOTIFIKASI FCM BALASAN KE PELAPOR (Jika Status Laporan Diubah)
+    // =========================================================================
+    try {
+      const tokenPelapor = laporan.user_pelapor?.fcm_token;
+      
+      // Pastikan pelapor sedang login dari Android/iOS dan memiliki token valid
+      if (tokenPelapor && tokenPelapor !== 'dummy_fcm_token_web' && tokenPelapor !== 'dummy_token_fallback') {
+        const payloadUpdate = {
+          token: tokenPelapor,
+          notification: {
+            title: `✅ Update Laporan: ${laporan.id_laporan}`,
+            body: `Status laporan Anda saat ini: ${laporan.status}`
+          },
+          data: {
+            id_laporan: laporan.id_laporan,
+            click_action: "FLUTTER_NOTIFICATION_CLICK"
+          }
+        };
+
+        await admin.messaging().send(payloadUpdate);
+        console.log(`[FCM - Update] Notifikasi berhasil dikirim ke Pelapor.`);
+      }
+    } catch (fcmError) {
+      console.error('Gagal memproses Push Notification ke Pelapor:', fcmError);
+    }
+    // =========================================================================
 
     return res.status(200).json({
       status: 'success',

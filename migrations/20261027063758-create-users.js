@@ -11,7 +11,7 @@ module.exports = {
       },
       nama_karyawan: { type: Sequelize.STRING(150), allowNull: false },
       password: { type: Sequelize.STRING(255), allowNull: false },
-      jabatan: { type: Sequelize.STRING(100) },
+      // jabatan: { type: Sequelize.STRING(100) },
       id_unit: {
         type: Sequelize.STRING(20),
         references: { model: 'unit', key: 'id_unit' },
