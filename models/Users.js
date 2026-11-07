@@ -3,7 +3,7 @@ module.exports = (sequelize, DataTypes) => {
     id_nik: { type: DataTypes.STRING(50), primaryKey: true },
     nama_karyawan: DataTypes.STRING(150),
     password: DataTypes.STRING(255),
-    jabatan: DataTypes.STRING(100),
+    // jabatan: DataTypes.STRING(100),
     id_unit: DataTypes.STRING(20),
     id_role: DataTypes.STRING(20),
     fcm_token: DataTypes.TEXT,

@@ -68,7 +68,7 @@ exports.login = async (req, res) => {
       data: {
         id_nik: user.id_nik,
         nama_karyawan: user.nama_karyawan,
-        jabatan: user.jabatan,
+        // jabatan: user.jabatan,
         id_unit: user.id_unit,
         nama_unit: user.unitData?.nama_unit || '-',
         id_role: user.id_role,

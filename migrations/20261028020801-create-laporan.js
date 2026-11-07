@@ -49,7 +49,7 @@ module.exports = {
       },
       
       perihal: { type: Sequelize.TEXT, allowNull: false },
-      // prioritas: { type: Sequelize.STRING(20) }, // Low, Medium, High
+      prioritas: { type: Sequelize.STRING(20) }, // Low, Medium, High
       keterangan: { type: Sequelize.TEXT },
       bukti: {type: Sequelize.STRING}, //untuk menyimpan url gambar dan lain-lain
       status: { type: Sequelize.STRING(50), defaultValue: 'Pending' },
