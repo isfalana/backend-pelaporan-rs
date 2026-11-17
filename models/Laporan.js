@@ -1,21 +1,89 @@
+'use strict';
+
 module.exports = (sequelize, DataTypes) => {
   const Laporan = sequelize.define('Laporan', {
-    id_laporan: { type: DataTypes.STRING(50), primaryKey: true },
-    tgl_kejadian: DataTypes.DATE,
-    
-    id_unit_pelapor: DataTypes.STRING(20),
-    id_nik_pelapor: DataTypes.STRING(50), // BARU
-    
-    id_unit_pic: DataTypes.STRING(20),    // BARU
-    id_nik_pic: DataTypes.STRING(50),     // BARU
-    
-    id_kategori: DataTypes.STRING(20),
-    id_tindak_lanjut: DataTypes.STRING(20),
-    perihal: DataTypes.TEXT,
-    prioritas: DataTypes.STRING(20),
-    keterangan: DataTypes.TEXT,
-    status: DataTypes.STRING(50),
-    tgl_selesai: DataTypes.DATE,
+    id_laporan: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      primaryKey: true,
+      defaultValue: DataTypes.UUIDV4
+    },
+    nomor_laporan: {
+      type: DataTypes.STRING(50),
+      allowNull: false,
+      unique: true
+    },
+    tgl_laporan: {
+      type: DataTypes.DATEONLY,
+      allowNull: false,
+      defaultValue: DataTypes.NOW
+    },
+    tgl_kejadian: {
+      type: DataTypes.DATEONLY,
+      allowNull: false
+    },
+    id_nik_pelapor: {
+      type: DataTypes.STRING(50),
+      allowNull: false
+    },
+    id_unit_pelapor: {
+      type: DataTypes.STRING(20),
+      allowNull: false
+    },
+    id_kategori: {
+      type: DataTypes.STRING(20),
+      allowNull: false
+    },
+    id_prioritas: {
+      type: DataTypes.STRING(20),
+      allowNull: false
+    },
+    priority_mode: {
+      type: DataTypes.STRING(20),
+      allowNull: false,
+      defaultValue: 'AUTO',
+      validate: {
+        isIn: [['AUTO', 'MANUAL']]
+      }
+    },
+    deadline: {
+      type: DataTypes.DATEONLY,
+      allowNull: false
+    },
+    perihal: {
+      type: DataTypes.STRING(255),
+      allowNull: false
+    },
+    keterangan: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
+    status: {
+      type: DataTypes.STRING(40),
+      allowNull: false,
+      defaultValue: 'OPEN',
+      validate: {
+        isIn: [[
+          'OPEN',
+          'IN_PROGRESS',
+          'PENDING_APPROVAL',
+          'RETURNED',
+          'COMPLETED'
+        ]]
+      }
+    },
+    approved_by: {
+      type: DataTypes.STRING(50),
+      allowNull: true
+    },
+    approved_at: {
+      type: DataTypes.DATE,
+      allowNull: true
+    },
+    approval_note: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    }
   }, {
     tableName: 'laporan',
     timestamps: true,
@@ -23,23 +91,69 @@ module.exports = (sequelize, DataTypes) => {
     updatedAt: 'updated_at',
     deletedAt: 'deleted_at',
     paranoid: true,
+    underscored: true
   });
 
   Laporan.associate = (models) => {
-    // Relasi untuk Data Pelapor (Menarik Nama Unit & Nama User)
-    Laporan.belongsTo(models.Unit, { foreignKey: 'id_unit_pelapor', as: 'unit_pelapor' });
-    Laporan.belongsTo(models.Users, { foreignKey: 'id_nik_pelapor', as: 'user_pelapor' });
-    
-    // Relasi untuk Data PIC Tujuan (Menarik Nama Unit & Nama User)
-    Laporan.belongsTo(models.Unit, { foreignKey: 'id_unit_pic', as: 'unit_pic' });
-    Laporan.belongsTo(models.Users, { foreignKey: 'id_nik_pic', as: 'user_pic' });
+    // Identitas pelapor
+    Laporan.belongsTo(models.Users, {
+      foreignKey: 'id_nik_pelapor',
+      as: 'pelapor'
+    });
 
-    // Relasi Master Lainnya
-    Laporan.belongsTo(models.Kategori, { foreignKey: 'id_kategori', as: 'kategori' });
-    Laporan.belongsTo(models.TindakLanjut, { foreignKey: 'id_tindak_lanjut', as: 'tindak_lanjut' });
-    
-    // Relasi Log Riwayat (One-to-Many)
-    Laporan.hasMany(models.DetailTindakan, { foreignKey: 'id_laporan', as: 'riwayat_tindakan' });
+    Laporan.belongsTo(models.Unit, {
+      foreignKey: 'id_unit_pelapor',
+      as: 'unit_pelapor'
+    });
+
+    // Master kategori dan prioritas
+    Laporan.belongsTo(models.Kategori, {
+      foreignKey: 'id_kategori',
+      as: 'kategori'
+    });
+
+    Laporan.belongsTo(models.Prioritas, {
+      foreignKey: 'id_prioritas',
+      as: 'prioritas'
+    });
+
+    // Penugasan banyak PIC
+    Laporan.hasMany(models.LaporanPic, {
+      foreignKey: 'id_laporan',
+      as: 'penugasan_pic'
+    });
+
+    Laporan.belongsToMany(models.Users, {
+      through: models.LaporanPic,
+      foreignKey: 'id_laporan',
+      otherKey: 'id_nik_pic',
+      as: 'pics'
+    });
+
+    // Persetujuan penyelesaian oleh pelapor
+    Laporan.belongsTo(models.Users, {
+      foreignKey: 'approved_by',
+      as: 'approver'
+    });
+
+    // Checklist tindakan
+    Laporan.hasMany(models.DetailTindakan, {
+      foreignKey: 'id_laporan',
+      as: 'detail_tindakan'
+    });
+
+    // Evidence laporan
+    Laporan.hasMany(models.Evidence, {
+      foreignKey: 'id_laporan',
+      as: 'evidence'
+    });
+
+    // Riwayat aktivitas laporan
+    Laporan.hasMany(models.LaporanHistory, {
+      foreignKey: 'id_laporan',
+      as: 'history'
+    });
   };
+
   return Laporan;
 };

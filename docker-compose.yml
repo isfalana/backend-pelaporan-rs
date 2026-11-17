@@ -28,6 +28,11 @@ services:
       # Menimpa DB_HOST lokal Anda agar terhubung ke container PostgreSQL
       DB_HOST: postgres-db
       PORT: 3000
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - evidence_storage:/app/storage
 
 volumes:
   postgres_data:
+  evidence_storage:

@@ -33,7 +33,7 @@ module.exports = {
         id_nik: 'NIK-001',
         nama_karyawan: 'Admin IT',
         password: passwordHash,
-        jabatan: 'Kepala IT',
+        // jabatan: 'Kepala IT',
         id_unit: 'U-IT', // Dari unit mana user ini berasal
         id_role: 'R-01',
         created_at: new Date(),
@@ -43,7 +43,7 @@ module.exports = {
         id_nik: 'NIK-002',
         nama_karyawan: 'Siti Aminah', // Contoh user sebagai Pelapor
         password: passwordHash,
-        jabatan: 'Staff Pendaftaran',
+        // jabatan: 'Staff Pendaftaran',
         id_unit: 'U-PENDAFTARAN', // Dari unit mana user ini berasal
         id_role: 'R-02',
         created_at: new Date(),
@@ -53,7 +53,7 @@ module.exports = {
         id_nik: 'NIK-003',
         nama_karyawan: 'Budi Teknisi', // Contoh user sebagai PIC (Tujuan)
         password: passwordHash,
-        jabatan: 'Teknisi Umum',
+        // jabatan: 'Teknisi Umum',
         id_unit: 'U-UMUM', // Dari unit mana user ini berasal
         id_role: 'R-02',
         created_at: new Date(),

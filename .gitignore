@@ -12,3 +12,15 @@ npm-debug.log*
 
 # Local and sensitive files
 .DS_Store
+
+# ServiceAccountKey
+serviceAccountKey.json
+
+# Uploaded Evidence
+/storage/*
+!/storage/.gitkeep
+!/storage/evidence/
+/storage/evidence/*
+!/storage/evidence/.gitkeep
+
+/backups/
