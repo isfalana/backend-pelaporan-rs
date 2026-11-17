@@ -15,3 +15,12 @@ npm-debug.log*
 
 # ServiceAccountKey
 serviceAccountKey.json
+
+# Uploaded Evidence
+/storage/*
+!/storage/.gitkeep
+!/storage/evidence/
+/storage/evidence/*
+!/storage/evidence/.gitkeep
+
+/backups/

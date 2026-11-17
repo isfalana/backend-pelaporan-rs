@@ -1,37 +1,59 @@
 'use strict';
-const { Model } = require('sequelize');
 
 module.exports = (sequelize, DataTypes) => {
-  class TemplateTindakan extends Model {
-    static associate(models) {
-      // Jika list_tindakan berupa JSON array, relasi fisik (belongsToMany) biasanya 
-      // tidak dideklarasikan di sini. Pengambilan data detail tindakan dilakukan 
-      // melalui query manual (Op.in) di controller saat template dipanggil.
-    }
-  }
-
-  TemplateTindakan.init({
+  const TemplateTindakan = sequelize.define('TemplateTindakan', {
     id_template: {
-      type: DataTypes.STRING(50),
-      primaryKey: true,
-      allowNull: false
+      type: DataTypes.STRING(20),
+      allowNull: false,
+      primaryKey: true
     },
     nama_template: {
-      type: DataTypes.STRING(255),
+      type: DataTypes.STRING(150),
       allowNull: false
     },
-    list_tindakan: {
-      type: DataTypes.JSON,
-      allowNull: false
+    deskripsi: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
+    id_kategori: {
+      type: DataTypes.STRING(20),
+      allowNull: true
+    },
+    is_active: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true
+    },
+    created_by: {
+      type: DataTypes.STRING(50),
+      allowNull: true
     }
   }, {
-    sequelize,
-    modelName: 'TemplateTindakan',
     tableName: 'template_tindakan',
     timestamps: true,
     createdAt: 'created_at',
-    updatedAt: 'updated_at'
+    updatedAt: 'updated_at',
+    deletedAt: 'deleted_at',
+    paranoid: true,
+    underscored: true
   });
+
+  TemplateTindakan.associate = (models) => {
+    TemplateTindakan.belongsTo(models.Kategori, {
+      foreignKey: 'id_kategori',
+      as: 'kategori'
+    });
+
+    TemplateTindakan.belongsTo(models.Users, {
+      foreignKey: 'created_by',
+      as: 'creator'
+    });
+
+    TemplateTindakan.hasMany(models.TemplateTindakanDetail, {
+      foreignKey: 'id_template',
+      as: 'details'
+    });
+  };
 
   return TemplateTindakan;
 };

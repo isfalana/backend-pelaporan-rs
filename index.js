@@ -7,13 +7,14 @@ const authRoutes = require('./routes/authRoutes');
 const laporanRoutes = require('./routes/laporanRoutes');
 const tindakanRoutes = require('./routes/tindakanRoutes');
 const masterRoutes = require('./routes/masterRoutes');
+const evidenceRoutes = require('./routes/evidenceRoutes');
 
 const app = express();
 
 // Middleware
 app.use(cors()); // Mengizinkan akses dari aplikasi luar (Flutter)
 app.use(express.json()); // Agar Express bisa membaca request body berformat JSON
-app.use(express.urlencoded({ extended: true })); // Untuk menangani form-data
+app.use(express.urlencoded({ extended: true })); // Untuk menangani form-datas
 
 // Health check endpoint
 app.get('/', (req, res) => {
@@ -29,6 +30,21 @@ app.use('/api/auth', authRoutes);
 app.use('/api/laporan', laporanRoutes);
 app.use('/api/tindakan', tindakanRoutes);
 app.use('/api/master', masterRoutes);
+app.use('/api/evidence', evidenceRoutes);
+
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error('API Error:', err);
+
+  if (res.headersSent) {
+    return next(err);
+  }
+
+  return res.status(err.statusCode || 500).json({
+    status: 'error',
+    message: err.message || 'Terjadi kesalahan pada server'
+  });
+});
 
 // Jalankan Server
 const PORT = process.env.PORT || 3000;
