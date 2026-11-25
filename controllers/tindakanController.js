@@ -9,6 +9,9 @@ const {
   sequelize
 } = require('../models');
 
+// [MODIFIKASI] Import sendNotification
+const { sendNotification } = require('../services/notificationService');
+
 const crypto = require('crypto');
 
 // ==========================================
@@ -93,7 +96,7 @@ const updateLaporanProgress = async (id_laporan, transaction) => {
     newStatus = 'PENDING_APPROVAL';
   } else if (laporan.status === 'PENDING_APPROVAL') {
     newStatus = 'IN_PROGRESS';
-  } else if (total > 0 && laporan.status === 'OPEN') {
+  } else if (total > 0 && (laporan.status === 'OPEN' || laporan.status === 'RETURNED')) {
     newStatus = 'IN_PROGRESS';
   }
 
@@ -112,6 +115,24 @@ const updateLaporanProgress = async (id_laporan, transaction) => {
       new_value: { status: newStatus },
       transaction
     });
+
+    // [MODIFIKASI] Jika semua checklist selesai dan status menjadi PENDING_APPROVAL,
+    // kirim notifikasi ke pelapor untuk melakukan peninjauan/approval
+    if (newStatus === 'PENDING_APPROVAL') {
+      transaction.afterCommit(async () => {
+        try {
+          await sendNotification({
+            id_nik_list: [laporan.id_nik_pelapor],
+            id_laporan: laporan.id_laporan,
+            title: `Laporan Menunggu Approval: ${laporan.nomor_laporan}`,
+            body: `Seluruh tindakan pada laporan "${laporan.perihal || laporan.nomor_laporan}" telah selesai dikerjakan. Silakan tinjau dan lakukan approval.`,
+            type: 'PENDING_APPROVAL'
+          });
+        } catch (notifErr) {
+          console.error('Gagal kirim notifikasi PENDING_APPROVAL ke pelapor:', notifErr);
+        }
+      });
+    }
   }
 };
 
@@ -156,7 +177,7 @@ exports.createTindakan = async (req, res) => {
     }
 
     const tindakan = await DetailTindakan.create({
-      id_detail: crypto.randomUUID(),
+      id_detail_tindakan: crypto.randomUUID(),
       id_laporan,
       nama_tindakan: nama_tindakan.trim(),
       sumber: 'MANUAL',
@@ -169,7 +190,7 @@ exports.createTindakan = async (req, res) => {
 
     await createHistory({
       id_laporan,
-      id_detail_tindakan: tindakan.id_detail,
+      id_detail_tindakan: tindakan.id_detail_tindakan,
       actor_id: actorId,
       activity_type: 'ACTION_CREATED',
       description: 'PIC menambahkan tindakan manual',
@@ -274,7 +295,7 @@ exports.applyTemplate = async (req, res) => {
     }
 
     const tindakanData = template.details.map((detail) => ({
-      id_detail: crypto.randomUUID(),
+      id_detail_tindakan: crypto.randomUUID(),
       id_laporan,
       id_template_detail: detail.id_template_detail,
       nama_tindakan: detail.nama_tindakan,
@@ -455,7 +476,7 @@ exports.updateTindakan = async (req, res) => {
 
     await createHistory({
       id_laporan: tindakan.id_laporan,
-      id_detail_tindakan: tindakan.id_detail,
+      id_detail_tindakan: tindakan.id_detail_tindakan,
       actor_id: actorId,
       activity_type: 'ACTION_UPDATED',
       description: 'PIC mengubah detail tindakan',
@@ -552,7 +573,7 @@ exports.toggleTindakan = async (req, res) => {
 
     await createHistory({
       id_laporan: tindakan.id_laporan,
-      id_detail_tindakan: tindakan.id_detail,
+      id_detail_tindakan: tindakan.id_detail_tindakan,
       actor_id: actorId,
       activity_type: 'ACTION_CHECKED',
       description: is_completed
@@ -633,7 +654,7 @@ exports.deleteTindakan = async (req, res) => {
 
     await createHistory({
       id_laporan,
-      id_detail_tindakan: tindakan.id_detail,
+      id_detail_tindakan: tindakan.id_detail_tindakan,
       actor_id: actorId,
       activity_type: 'ACTION_DELETED',
       description: 'PIC menghapus tindakan',

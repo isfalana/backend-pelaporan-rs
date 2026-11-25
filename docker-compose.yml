@@ -31,8 +31,8 @@ services:
     volumes:
       - .:/app
       - /app/node_modules
-      - evidence_storage:/app/storage
+      # [MODIFIKASI] Gunakan bind mount ./storage agar file evidence tersimpan langsung di folder storage lokal backend
+      - ./storage:/app/storage
 
 volumes:
   postgres_data:
-  evidence_storage:

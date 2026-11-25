@@ -5,6 +5,18 @@ const evidenceController = require('../controllers/evidenceController');
 const uploadEvidence = require('../middleware/uploadMiddleware');
 const authMiddleware = require('../middleware/authMiddleware');
 
+// [MODIFIKASI] Endpoint publik / file stream untuk melihat gambar/dokumen evidence secara langsung
+router.get(
+  '/file/:id_evidence',
+  evidenceController.getEvidenceFile
+);
+
+// [MODIFIKASI] Endpoint publik file stream berdasarkan id_laporan
+router.get(
+  '/file-laporan/:id_laporan',
+  evidenceController.getEvidenceFileByLaporan
+);
+
 router.use(authMiddleware);
 
 router.post(

@@ -293,3 +293,79 @@ exports.updateFcmToken = async (req, res) => {
     });
   }
 };
+
+// [MODIFIKASI] Endpoint Reset/Forgot Password untuk pengguna (Login & Profil)
+exports.resetPassword = async (req, res) => {
+  try {
+    const { id_nik, new_password } = req.body;
+
+    if (!id_nik || !id_nik.trim()) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'NIK karyawan wajib diisi'
+      });
+    }
+
+    if (!new_password || typeof new_password !== 'string') {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Kata sandi baru wajib diisi'
+      });
+    }
+
+    const trimmedPassword = new_password.trim();
+
+    // Validasi syarat password: min 8 karakter, angka, dan simbol
+    if (trimmedPassword.length < 8) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Kata sandi minimal 8 karakter'
+      });
+    }
+
+    if (!/\d/.test(trimmedPassword)) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Kata sandi harus mengandung minimal satu angka'
+      });
+    }
+
+    if (!/[!@#$%^&*(),.?":{}|<>_~+\-=\[\]\\]/.test(trimmedPassword)) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Kata sandi harus mengandung minimal satu simbol/karakter khusus'
+      });
+    }
+
+    // Cari user berdasarkan NIK
+    const user = await Users.findOne({
+      where: sequelize.where(
+        sequelize.fn('LOWER', sequelize.col('id_nik')),
+        id_nik.trim().toLowerCase()
+      )
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Karyawan dengan NIK tersebut tidak ditemukan'
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(trimmedPassword, 10);
+    user.password = hashedPassword;
+    await user.save();
+
+    return res.status(200).json({
+      status: 'success',
+      message: 'Kata sandi berhasil diubah. Silakan masuk menggunakan kata sandi baru.'
+    });
+
+  } catch (error) {
+    console.error('Error reset password:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: error.message || 'Terjadi kesalahan saat mereset kata sandi'
+    });
+  }
+};

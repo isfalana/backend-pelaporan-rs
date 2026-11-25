@@ -15,6 +15,11 @@ module.exports = (sequelize, DataTypes) => {
     deskripsi: {
       type: DataTypes.TEXT,
       allowNull: true
+    },
+    // [MODIFIKASI] Menambahkan kolom permissions untuk menyimpan hak akses role (JSONB)
+    permissions: {
+      type: DataTypes.JSONB,
+      allowNull: true
     }
   }, {
     tableName: 'role',
