@@ -2,7 +2,7 @@
 
 module.exports = (sequelize, DataTypes) => {
   const UserSession = sequelize.define('UserSession', {
-    id: {
+    id_session: {
       type: DataTypes.UUID,
       allowNull: false,
       primaryKey: true,
@@ -13,7 +13,7 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false
     },
     jti: {
-      type: DataTypes.STRING(255),
+      type: DataTypes.STRING(100),
       allowNull: false,
       unique: true
     },
@@ -52,7 +52,6 @@ module.exports = (sequelize, DataTypes) => {
   UserSession.associate = (models) => {
     UserSession.belongsTo(models.Users, {
       foreignKey: 'id_nik',
-      as: 'user'
     });
   };
 

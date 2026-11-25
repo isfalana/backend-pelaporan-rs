@@ -2,7 +2,7 @@
 
 module.exports = (sequelize, DataTypes) => {
   const DetailTindakan = sequelize.define('DetailTindakan', {
-    id_detail: {
+    id_detail_tindakan: {
       type: DataTypes.UUID,
       allowNull: false,
       primaryKey: true,

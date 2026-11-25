@@ -83,6 +83,15 @@ module.exports = (sequelize, DataTypes) => {
     approval_note: {
       type: DataTypes.TEXT,
       allowNull: true
+    },
+    // [MODIFIKASI] Kolom keterangan dan bukti tindak lanjut dari PIC
+    keterangan_tindakan: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
+    bukti_tindakan: {
+      type: DataTypes.TEXT,
+      allowNull: true
     }
   }, {
     tableName: 'laporan',

@@ -12,6 +12,7 @@ const {
   LaporanHistory,
   sequelize
 } = require('../models');
+const { sendNotification } = require('../services/notificationService');
 
 // ==========================================
 // HELPER: CEK ADMIN
@@ -221,6 +222,39 @@ exports.uploadEvidence = async (req, res) => {
 
     await transaction.commit();
 
+    // [MODIFIKASI] Kirim notifikasi bukti baru ke PIC atau Pelapor
+    try {
+      const laporan = await Laporan.findByPk(reportId);
+      if (laporan) {
+        const actorName = req.user?.nama_karyawan || actorId;
+        const pics = await LaporanPic.findAll({ where: { id_laporan: reportId } });
+        const picNiks = pics.map(p => p.id_nik_pic || p.id_nik).filter(nik => nik && nik !== actorId);
+
+        // Jika diunggah oleh Pelapor -> beri tahu seluruh PIC
+        if (actorId === laporan.id_nik_pelapor && picNiks.length > 0) {
+          await sendNotification({
+            id_nik_list: picNiks,
+            id_laporan: reportId,
+            title: `Dokumen Bukti Baru: ${laporan.nomor_laporan}`,
+            body: `Pelapor (${actorName}) mengunggah bukti "${evidence.original_name}" untuk laporan "${laporan.perihal || laporan.nomor_laporan}".`,
+            type: 'EVIDENCE_UPLOADED'
+          });
+        }
+        // Jika diunggah oleh PIC -> beri tahu Pelapor
+        else if (laporan.id_nik_pelapor && actorId !== laporan.id_nik_pelapor) {
+          await sendNotification({
+            id_nik_list: [laporan.id_nik_pelapor],
+            id_laporan: reportId,
+            title: `Dokumen Tindak Lanjut: ${laporan.nomor_laporan}`,
+            body: `PIC (${actorName}) mengunggah bukti "${evidence.original_name}" untuk laporan "${laporan.perihal || laporan.nomor_laporan}".`,
+            type: 'EVIDENCE_UPLOADED'
+          });
+        }
+      }
+    } catch (notifErr) {
+      console.error('Error kirim notifikasi upload evidence:', notifErr);
+    }
+
     return res.status(201).json({
       status: 'success',
       message: 'Evidence berhasil diunggah',
@@ -286,6 +320,76 @@ exports.getEvidenceByLaporan = async (req, res) => {
   } catch (error) {
     console.error('Error getEvidenceByLaporan:', error);
 
+    return res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
+
+// ==========================================
+// [MODIFIKASI] AMBIL FILE FISIK EVIDENCE
+// Mengirim file fisik berdasarkan id_evidence
+// ==========================================
+
+exports.getEvidenceFile = async (req, res) => {
+  try {
+    const { id_evidence } = req.params;
+    const evidence = await Evidence.findByPk(id_evidence);
+    if (!evidence) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Evidence tidak ditemukan'
+      });
+    }
+
+    const { resolveStoragePath } = require('../utils/storage.util');
+    const absolutePath = resolveStoragePath(evidence.file_path);
+    return res.sendFile(absolutePath);
+  } catch (error) {
+    console.error('Error getEvidenceFile:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
+
+// [MODIFIKASI] Ambil file fisik evidence langsung berdasarkan ID Laporan (fallback cerdas bila ID evidence belum terpetakan di client)
+exports.getEvidenceFileByLaporan = async (req, res) => {
+  try {
+    const { id_laporan } = req.params;
+    const isTindakan = req.query.tindakan === 'true' || req.query.type === 'tindakan';
+
+    let whereClause = { id_laporan };
+    if (isTindakan) {
+      whereClause.id_detail_tindakan = { [require('sequelize').Op.ne]: null };
+    }
+
+    let evidence = await Evidence.findOne({
+      where: whereClause,
+      order: [['created_at', isTindakan ? 'DESC' : 'ASC']]
+    });
+
+    if (!evidence && isTindakan) {
+      evidence = await Evidence.findOne({
+        where: { id_laporan },
+        order: [['created_at', 'DESC']]
+      });
+    }
+
+    if (!evidence) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Berkas evidence untuk laporan ini tidak ditemukan'
+      });
+    }
+
+    const { resolveStoragePath } = require('../utils/storage.util');
+    const absolutePath = resolveStoragePath(evidence.file_path);
+    return res.sendFile(absolutePath);
+  } catch (error) {
+    console.error('Error getEvidenceFileByLaporan:', error);
     return res.status(500).json({
       status: 'error',
       message: error.message
@@ -422,6 +526,39 @@ exports.deleteEvidence = async (req, res) => {
     await evidence.destroy({ transaction });
 
     await transaction.commit();
+
+    // [MODIFIKASI] Notifikasi penghapusan berkas bukti ke PIC atau Pelapor
+    try {
+      const laporan = await Laporan.findByPk(reportId);
+      if (laporan) {
+        const actorName = req.user?.nama_karyawan || actorId;
+        const pics = await LaporanPic.findAll({ where: { id_laporan: reportId } });
+        const picNiks = pics.map(p => p.id_nik_pic || p.id_nik).filter(nik => nik && nik !== actorId);
+
+        // Jika pelapor yang menghapus -> beri tahu PIC
+        if (actorId === laporan.id_nik_pelapor && picNiks.length > 0) {
+          await sendNotification({
+            id_nik_list: picNiks,
+            id_laporan: reportId,
+            title: `Dokumen Bukti Dihapus: ${laporan.nomor_laporan}`,
+            body: `Dokumen bukti "${evidence.original_name}" pada laporan "${laporan.perihal || laporan.nomor_laporan}" telah dihapus oleh ${actorName}.`,
+            type: 'EVIDENCE_DELETED'
+          });
+        }
+        // Jika PIC yang menghapus -> beri tahu Pelapor
+        else if (laporan.id_nik_pelapor && actorId !== laporan.id_nik_pelapor) {
+          await sendNotification({
+            id_nik_list: [laporan.id_nik_pelapor],
+            id_laporan: reportId,
+            title: `Dokumen Tindak Lanjut Dihapus: ${laporan.nomor_laporan}`,
+            body: `Dokumen bukti "${evidence.original_name}" pada laporan "${laporan.perihal || laporan.nomor_laporan}" telah dihapus oleh ${actorName}.`,
+            type: 'EVIDENCE_DELETED'
+          });
+        }
+      }
+    } catch (notifErr) {
+      console.error('Error kirim notifikasi delete evidence:', notifErr);
+    }
 
     // File fisik dihapus setelah transaksi database berhasil.
     try {

@@ -8,6 +8,8 @@ const laporanRoutes = require('./routes/laporanRoutes');
 const tindakanRoutes = require('./routes/tindakanRoutes');
 const masterRoutes = require('./routes/masterRoutes');
 const evidenceRoutes = require('./routes/evidenceRoutes');
+// [MODIFIKASI] Import rute notifikasi
+const notificationRoutes = require('./routes/notificationRoutes');
 
 const app = express();
 
@@ -15,6 +17,9 @@ const app = express();
 app.use(cors()); // Mengizinkan akses dari aplikasi luar (Flutter)
 app.use(express.json()); // Agar Express bisa membaca request body berformat JSON
 app.use(express.urlencoded({ extended: true })); // Untuk menangani form-datas
+
+// [MODIFIKASI] Static folder untuk file storage dan bukti evidence agar dapat diakses oleh frontend/browser
+app.use('/storage', express.static(require('path').join(__dirname, 'storage')));
 
 // Health check endpoint
 app.get('/', (req, res) => {
@@ -31,6 +36,8 @@ app.use('/api/laporan', laporanRoutes);
 app.use('/api/tindakan', tindakanRoutes);
 app.use('/api/master', masterRoutes);
 app.use('/api/evidence', evidenceRoutes);
+// [MODIFIKASI] Endpoint notifikasi in-app
+app.use('/api/notifications', notificationRoutes);
 
 // Global error handler
 app.use((err, req, res, next) => {
