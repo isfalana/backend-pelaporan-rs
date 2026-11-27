@@ -853,8 +853,9 @@ exports.createLaporan = async (req, res) => {
     // Notifikasi dikirim setelah transaksi berhasil.
     await notifyPics(uniquePicIds, {
       title: `Laporan Baru: ${nomorLaporan}`,
-      body: `Perihal: ${perihal}`,
-      id_laporan: laporan.id_laporan
+      body: `Laporan baru oleh ${pelapor.nama_karyawan || pelapor.id_nik}: "${perihal}".`,
+      id_laporan: laporan.id_laporan,
+      type: 'LAPORAN_BARU'
     });
 
     const item = await Laporan.findByPk(laporan.id_laporan, {
@@ -1399,15 +1400,32 @@ exports.updateTindakLanjut = async (req, res) => {
       }
     });
 
-    // [MODIFIKASI] Notifikasi ke pelapor bahwa PIC telah memperbarui keterangan & bukti tindak lanjut
+    // [MODIFIKASI] Notifikasi pembaruan tindak lanjut ke Pelapor dan PIC terkait
     try {
+      const actorName = req.user?.nama_karyawan || actorId;
+      const recipientNiks = [];
+
+      // Pelapor menerima notifikasi jika bukan pelaku update
       if (laporan.id_nik_pelapor && laporan.id_nik_pelapor !== actorId) {
+        recipientNiks.push(laporan.id_nik_pelapor);
+      }
+
+      // Seluruh PIC menerima notifikasi jika bukan pelaku update
+      const pics = await LaporanPic.findAll({ where: { id_laporan: laporan.id_laporan } });
+      for (const p of pics) {
+        const picNik = p.id_nik_pic || p.id_nik;
+        if (picNik && picNik !== actorId && !recipientNiks.includes(picNik)) {
+          recipientNiks.push(picNik);
+        }
+      }
+
+      if (recipientNiks.length > 0) {
         await sendNotification({
-          id_nik_list: [laporan.id_nik_pelapor],
+          id_nik_list: recipientNiks,
           id_laporan: laporan.id_laporan,
           title: `Tindak Lanjut Diperbarui: ${laporan.nomor_laporan}`,
-          body: `PIC telah memperbarui keterangan & bukti tindak lanjut untuk laporan "${laporan.perihal || laporan.nomor_laporan}".`,
-          type: 'PIC_NOTIFICATION'
+          body: `Tindak lanjut telah diupdate oleh ${actorName} ("${laporan.perihal || laporan.nomor_laporan}").`,
+          type: 'LAPORAN_UPDATED'
         });
       }
     } catch (notifErr) {
@@ -1554,7 +1572,7 @@ exports.updateLaporan = async (req, res) => {
           id_nik_list: picNiks,
           id_laporan: id,
           title: `Laporan Diperbarui: ${laporan.nomor_laporan}`,
-          body: `${actorRole} (${actorName}) telah memperbarui informasi laporan "${laporan.perihal}". Silakan periksa perubahan.`,
+          body: `Laporan telah diupdate oleh ${actorName} ("${laporan.perihal}").`,
           type: 'LAPORAN_UPDATED'
         });
       }
@@ -1565,7 +1583,7 @@ exports.updateLaporan = async (req, res) => {
           id_nik_list: [laporan.id_nik_pelapor],
           id_laporan: id,
           title: `Laporan Diperbarui: ${laporan.nomor_laporan}`,
-          body: `Admin (${actorName}) telah memperbarui informasi laporan Anda "${laporan.perihal}".`,
+          body: `Laporan telah diupdate oleh ${actorName} ("${laporan.perihal}").`,
           type: 'LAPORAN_UPDATED'
         });
       }
@@ -1664,7 +1682,7 @@ exports.deleteLaporan = async (req, res) => {
           id_nik_list: picNiks,
           id_laporan: id,
           title: `Laporan Dihapus: ${laporan.nomor_laporan || 'Laporan'}`,
-          body: `Laporan "${laporan.perihal || laporan.nomor_laporan}" yang ditugaskan kepada Anda telah dihapus oleh ${userIsAdmin ? 'Admin' : actorName}.`,
+          body: `Laporan telah dihapus oleh ${actorName} ("${laporan.perihal || laporan.nomor_laporan}").`,
           type: 'REPORT_DELETED'
         });
       }
@@ -1673,7 +1691,7 @@ exports.deleteLaporan = async (req, res) => {
           id_nik_list: [pelaporNik],
           id_laporan: id,
           title: `Laporan Dihapus: ${laporan.nomor_laporan || 'Laporan'}`,
-          body: `Laporan Anda "${laporan.perihal || laporan.nomor_laporan}" telah dihapus oleh Admin (${actorName}).`,
+          body: `Laporan telah dihapus oleh ${actorName} ("${laporan.perihal || laporan.nomor_laporan}").`,
           type: 'REPORT_DELETED'
         });
       }

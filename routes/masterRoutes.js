@@ -22,7 +22,8 @@ const {
   getTemplates,
   createTemplate,
   updateTemplate,
-  deleteTemplate
+  deleteTemplate,
+  getNextMasterId
 } = require('../controllers/masterController');
 const authMiddleware = require('../middleware/authMiddleware');
 
@@ -59,5 +60,8 @@ router.get('/templates', getTemplates);
 router.post('/templates', authMiddleware, createTemplate);
 router.put('/templates/:id', authMiddleware, updateTemplate);
 router.delete('/templates/:id', authMiddleware, deleteTemplate);
+
+// [MODIFIKASI] Auto Next ID Master Data (Unit, Kategori, Role, Template)
+router.get('/next-id/:type', getNextMasterId);
 
 module.exports = router;
