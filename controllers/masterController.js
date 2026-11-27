@@ -8,7 +8,7 @@ const {Unit, Kategori, Role, Users, TindakLanjut, Prioritas, TemplateTindakan, T
 exports.getUnits = async (req, res) => {
   try {
     const units = await Unit.findAll({
-      order: [['nama_unit', 'ASC']]
+      order: [['id_unit', 'ASC']]
     });
 
     return res.status(200).json({
@@ -28,7 +28,7 @@ exports.getUnits = async (req, res) => {
 exports.getKategoris = async (req, res) => {
   try {
     const kategoris = await Kategori.findAll({
-      order: [['nama_kategori', 'ASC']]
+      order: [['id_kategori', 'ASC']]
     });
 
     return res.status(200).json({
@@ -48,7 +48,7 @@ exports.getKategoris = async (req, res) => {
 exports.getRoles = async (req, res) => {
   try {
     const roles = await Role.findAll({
-      order: [['nama_role', 'ASC']]
+      order: [['id_role', 'ASC']]
     });
 
     return res.status(200).json({
@@ -107,7 +107,7 @@ exports.getUsers = async (req, res) => {
 exports.getTindakLanjuts = async (req, res) => {
   try {
     const list = await TindakLanjut.findAll({
-      order: [['nama_tindak_lanjut', 'ASC']]
+      order: [['id_tindak_lanjut', 'ASC']]
     });
 
     return res.status(200).json({
@@ -165,7 +165,7 @@ exports.getTemplates = async (req, res) => {
         }
       ],
       order: [
-        ['nama_template', 'ASC'],
+        ['id_template', 'ASC'],
         [
           { model: TemplateTindakanDetail, as: 'details' },
           'urutan',
@@ -217,7 +217,7 @@ exports.createUnit = async (req, res) => {
       });
       let nextNum = 1;
       while (usedNumbers.has(nextNum)) nextNum++;
-      finalId = `UNIT-${String(nextNum).padStart(3, '0')}`;
+      finalId = `UNIT-${String(nextNum).padStart(2, '0')}`;
     }
 
     const unit = await Unit.create({ id_unit: finalId, nama_unit: trimmedNama });
@@ -289,7 +289,7 @@ exports.createKategori = async (req, res) => {
       });
       let nextNum = 1;
       while (usedNumbers.has(nextNum)) nextNum++;
-      finalId = `KAT-${String(nextNum).padStart(3, '0')}`;
+      finalId = `KAT-${String(nextNum).padStart(2, '0')}`;
     }
 
     const kat = await Kategori.create({
@@ -369,8 +369,7 @@ exports.createRole = async (req, res) => {
       let nextNum = 1;
       while (usedNumbers.has(nextNum)) nextNum++;
       const prefix = trimmedId.toUpperCase().startsWith('R-') ? 'R-' : 'ROLE-';
-      const padLen = prefix === 'R-' ? 2 : 3;
-      finalId = `${prefix}${String(nextNum).padStart(padLen, '0')}`;
+      finalId = `${prefix}${String(nextNum).padStart(2, '0')}`;
     }
 
     // [MODIFIKASI] Simpan hak akses (permissions) ke database dalam format array JSONB
@@ -449,14 +448,45 @@ exports.deleteRole = async (req, res) => {
   }
 };
 
+// [MODIFIKASI] Helper untuk menyaring pesan error database agar ramah pengguna (bukan technical notNull Violation)
+function formatDatabaseError(error, defaultMsg = 'Terjadi kesalahan pada data') {
+  if (!error) return defaultMsg;
+  const msg = error.message || '';
+  if (msg.includes('notNull Violation') || error.name === 'SequelizeValidationError') {
+    if (msg.includes('id_unit') || msg.includes('unit')) return 'Unit tidak boleh kosong';
+    if (msg.includes('id_role') || msg.includes('role')) return 'Role tidak boleh kosong';
+    if (msg.includes('nama_karyawan') || msg.includes('nama')) return 'Nama karyawan tidak boleh kosong';
+    if (msg.includes('id_nik') || msg.includes('nik')) return 'NIK karyawan tidak boleh kosong';
+    if (msg.includes('password')) return 'Password tidak boleh kosong';
+    if (msg.includes('id_kategori') || msg.includes('kategori')) return 'Kategori tidak boleh kosong';
+    return 'Data yang wajib diisi tidak boleh kosong';
+  }
+  if (error.name === 'SequelizeUniqueConstraintError') {
+    return 'Data dengan informasi ini sudah ada di sistem';
+  }
+  return error.message || defaultMsg;
+}
+
 // ==========================================
-// [MODIFIKASI] CRUD USER / KARYAWAN (Dukungan restore soft-delete)
+// [MODIFIKASI] CRUD USER / KARYAWAN (Dukungan restore soft-delete & validasi wajib isi)
 // ==========================================
 exports.createUser = async (req, res) => {
   try {
     const { id_nik, nama_karyawan, id_unit, id_role, password } = req.body;
-    if (!id_nik || !nama_karyawan || !password) {
-      return res.status(400).json({ status: 'error', message: 'NIK, nama karyawan, dan password wajib diisi' });
+    if (!id_nik || !id_nik.trim()) {
+      return res.status(400).json({ status: 'error', message: 'NIK karyawan tidak boleh kosong' });
+    }
+    if (!nama_karyawan || !nama_karyawan.trim()) {
+      return res.status(400).json({ status: 'error', message: 'Nama karyawan tidak boleh kosong' });
+    }
+    if (!id_unit || !id_unit.trim()) {
+      return res.status(400).json({ status: 'error', message: 'Unit tidak boleh kosong' });
+    }
+    if (!id_role || !id_role.trim()) {
+      return res.status(400).json({ status: 'error', message: 'Role tidak boleh kosong' });
+    }
+    if (!password || !password.trim()) {
+      return res.status(400).json({ status: 'error', message: 'Password tidak boleh kosong' });
     }
     const trimmedNik = id_nik.trim().toUpperCase();
 
@@ -471,8 +501,8 @@ exports.createUser = async (req, res) => {
       // [MODIFIKASI] Pulihkan karyawan yang pernah di-soft delete
       await existing.restore();
       existing.nama_karyawan = nama_karyawan.trim();
-      existing.id_unit = id_unit || null;
-      existing.id_role = id_role || null;
+      existing.id_unit = id_unit.trim();
+      existing.id_role = id_role.trim();
       existing.password = hashedPassword;
       await existing.save();
       const userRes = existing.toJSON();
@@ -483,8 +513,8 @@ exports.createUser = async (req, res) => {
     const user = await Users.create({
       id_nik: trimmedNik,
       nama_karyawan: nama_karyawan.trim(),
-      id_unit: id_unit || null,
-      id_role: id_role || null,
+      id_unit: id_unit.trim(),
+      id_role: id_role.trim(),
       password: hashedPassword
     });
     const userRes = user.toJSON();
@@ -492,7 +522,7 @@ exports.createUser = async (req, res) => {
     return res.status(201).json({ status: 'success', message: 'Karyawan berhasil ditambahkan', data: userRes });
   } catch (error) {
     console.error('Error createUser:', error);
-    return res.status(500).json({ status: 'error', message: error.message });
+    return res.status(500).json({ status: 'error', message: formatDatabaseError(error, 'Gagal menambahkan karyawan') });
   }
 };
 
@@ -502,9 +532,25 @@ exports.updateUser = async (req, res) => {
     const { nama_karyawan, id_unit, id_role, password } = req.body;
     const user = await Users.findByPk(id);
     if (!user) return res.status(404).json({ status: 'error', message: 'Karyawan tidak ditemukan' });
-    if (nama_karyawan) user.nama_karyawan = nama_karyawan.trim();
-    if (id_unit !== undefined) user.id_unit = id_unit || null;
-    if (id_role !== undefined) user.id_role = id_role || null;
+
+    if (nama_karyawan !== undefined) {
+      if (!nama_karyawan || !nama_karyawan.trim()) {
+        return res.status(400).json({ status: 'error', message: 'Nama karyawan tidak boleh kosong' });
+      }
+      user.nama_karyawan = nama_karyawan.trim();
+    }
+    if (id_unit !== undefined) {
+      if (!id_unit || !id_unit.trim()) {
+        return res.status(400).json({ status: 'error', message: 'Unit tidak boleh kosong' });
+      }
+      user.id_unit = id_unit.trim();
+    }
+    if (id_role !== undefined) {
+      if (!id_role || !id_role.trim()) {
+        return res.status(400).json({ status: 'error', message: 'Role tidak boleh kosong' });
+      }
+      user.id_role = id_role.trim();
+    }
     if (password && password.trim().length >= 6) {
       user.password = await bcrypt.hash(password.trim(), 10);
     }
@@ -513,7 +559,7 @@ exports.updateUser = async (req, res) => {
     delete userRes.password;
     return res.status(200).json({ status: 'success', message: 'Data karyawan berhasil diperbarui', data: userRes });
   } catch (error) {
-    return res.status(500).json({ status: 'error', message: error.message });
+    return res.status(500).json({ status: 'error', message: formatDatabaseError(error, 'Gagal memperbarui karyawan') });
   }
 };
 
@@ -562,7 +608,7 @@ exports.createTemplate = async (req, res) => {
       });
       let nextNum = 1;
       while (usedNumbers.has(nextNum)) nextNum++;
-      finalId = `TPL-${String(nextNum).padStart(3, '0')}`;
+      finalId = `TPL-${String(nextNum).padStart(2, '0')}`;
     }
 
     const template = await TemplateTindakan.create({
@@ -640,6 +686,71 @@ exports.deleteTemplate = async (req, res) => {
     await template.destroy();
     return res.status(200).json({ status: 'success', message: 'Template tindakan berhasil dihapus' });
   } catch (error) {
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+// [MODIFIKASI] GET NEXT ID UNTUK MASTER DATA (UNIT, KATEGORI, ROLE, TEMPLATE)
+// Mengambil nomor urut berikutnya yang valid langsung dari database termasuk yang di-soft delete
+exports.getNextMasterId = async (req, res) => {
+  try {
+    const { type } = req.params;
+    let nextId = '';
+    const cleanType = (type || '').toLowerCase();
+
+    if (cleanType === 'unit' || cleanType === 'units') {
+      const allUnits = await Unit.findAll({ paranoid: false, attributes: ['id_unit'] });
+      const usedNumbers = new Set();
+      allUnits.forEach(u => {
+        const m = (u.id_unit || '').match(/^(?:UNIT-)?(\d+)$/i);
+        if (m) usedNumbers.add(parseInt(m[1], 10));
+      });
+      let nextNum = 1;
+      while (usedNumbers.has(nextNum)) nextNum++;
+      nextId = `UNIT-${String(nextNum).padStart(2, '0')}`;
+    } else if (cleanType === 'kategori' || cleanType === 'kategoris') {
+      const allKats = await Kategori.findAll({ paranoid: false, attributes: ['id_kategori'] });
+      const usedNumbers = new Set();
+      allKats.forEach(k => {
+        const m = (k.id_kategori || '').match(/^(?:KAT-|KATEGORI-)?(\d+)$/i);
+        if (m) usedNumbers.add(parseInt(m[1], 10));
+      });
+      let nextNum = 1;
+      while (usedNumbers.has(nextNum)) nextNum++;
+      nextId = `KAT-${String(nextNum).padStart(2, '0')}`;
+    } else if (cleanType === 'role' || cleanType === 'roles') {
+      const allRoles = await Role.findAll({ paranoid: false, attributes: ['id_role'] });
+      const usedNumbers = new Set();
+      allRoles.forEach(r => {
+        const m = (r.id_role || '').match(/^(?:ROLE-|R-|R)?(\d+)$/i);
+        if (m) usedNumbers.add(parseInt(m[1], 10));
+      });
+      let nextNum = 1;
+      while (usedNumbers.has(nextNum)) nextNum++;
+      nextId = `ROLE-${String(nextNum).padStart(2, '0')}`;
+    } else if (cleanType === 'template' || cleanType === 'templates') {
+      const allTpls = await TemplateTindakan.findAll({ paranoid: false, attributes: ['id_template'] });
+      const usedNumbers = new Set();
+      allTpls.forEach(t => {
+        const m = (t.id_template || '').match(/^(?:TPL-|TEMPLATE-)?(\d+)$/i);
+        if (m) usedNumbers.add(parseInt(m[1], 10));
+      });
+      let nextNum = 1;
+      while (usedNumbers.has(nextNum)) nextNum++;
+      nextId = `TPL-${String(nextNum).padStart(2, '0')}`;
+    } else {
+      return res.status(400).json({ status: 'error', message: 'Tipe master tidak valid' });
+    }
+
+    return res.status(200).json({
+      status: 'success',
+      data: {
+        type: cleanType,
+        next_id: nextId
+      }
+    });
+  } catch (error) {
+    console.error('Error getNextMasterId:', error);
     return res.status(500).json({ status: 'error', message: error.message });
   }
 };

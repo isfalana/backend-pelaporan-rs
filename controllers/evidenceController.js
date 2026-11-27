@@ -110,7 +110,7 @@ exports.uploadEvidence = async (req, res) => {
 
       return res.status(400).json({
         status: 'error',
-        message: 'File evidence wajib diunggah'
+        message: 'Bukti wajib diunggah'
       });
     }
 
@@ -210,7 +210,7 @@ exports.uploadEvidence = async (req, res) => {
       id_detail_tindakan: hasAction ? id_detail_tindakan : null,
       actor_id: actorId,
       activity_type: 'EVIDENCE_UPLOADED',
-      description: 'Pengguna mengunggah dokumen evidence',
+      description: 'Pengguna telah mengunggah bukti',
       new_value: {
         id_evidence: evidence.id_evidence,
         original_name: evidence.original_name,
@@ -222,7 +222,8 @@ exports.uploadEvidence = async (req, res) => {
 
     await transaction.commit();
 
-    // [MODIFIKASI] Kirim notifikasi bukti baru ke PIC atau Pelapor
+    // [MODIFIKASI] Dinonaktifkan: Notifikasi berkas/dokumen bukti diunggah tidak perlu dikirim
+    /*
     try {
       const laporan = await Laporan.findByPk(reportId);
       if (laporan) {
@@ -254,10 +255,11 @@ exports.uploadEvidence = async (req, res) => {
     } catch (notifErr) {
       console.error('Error kirim notifikasi upload evidence:', notifErr);
     }
+    */
 
     return res.status(201).json({
       status: 'success',
-      message: 'Evidence berhasil diunggah',
+      message: 'Bukti berhasil diunggah',
       data: evidence
     });
 
@@ -339,7 +341,7 @@ exports.getEvidenceFile = async (req, res) => {
     if (!evidence) {
       return res.status(404).json({
         status: 'error',
-        message: 'Evidence tidak ditemukan'
+        message: 'Dokumen atau File tidak ditemukan'
       });
     }
 
@@ -381,7 +383,7 @@ exports.getEvidenceFileByLaporan = async (req, res) => {
     if (!evidence) {
       return res.status(404).json({
         status: 'error',
-        message: 'Berkas evidence untuk laporan ini tidak ditemukan'
+        message: 'Berkas atau File Bukti untuk laporan ini tidak ditemukan'
       });
     }
 
@@ -469,7 +471,7 @@ exports.deleteEvidence = async (req, res) => {
 
       return res.status(404).json({
         status: 'error',
-        message: 'Evidence tidak ditemukan'
+        message: 'Bukti tidak ditemukan'
       });
     }
 
@@ -484,7 +486,7 @@ exports.deleteEvidence = async (req, res) => {
 
       return res.status(404).json({
         status: 'error',
-        message: 'Laporan terkait evidence tidak ditemukan'
+        message: 'Berkas atau File bukti laporan terkait tidak ditemukan'
       });
     }
 
@@ -501,7 +503,7 @@ exports.deleteEvidence = async (req, res) => {
 
       return res.status(403).json({
         status: 'error',
-        message: 'Anda tidak memiliki izin menghapus evidence ini'
+        message: 'Anda tidak memiliki izin menghapus bukti ini'
       });
     }
 
@@ -516,7 +518,7 @@ exports.deleteEvidence = async (req, res) => {
       id_detail_tindakan: evidence.id_detail_tindakan,
       actor_id: actorId,
       activity_type: 'EVIDENCE_DELETED',
-      description: 'Pengguna menghapus dokumen evidence',
+      description: 'Pengguna menghapus dokumen bukti',
       old_value: oldValue,
       transaction
     });
@@ -527,7 +529,8 @@ exports.deleteEvidence = async (req, res) => {
 
     await transaction.commit();
 
-    // [MODIFIKASI] Notifikasi penghapusan berkas bukti ke PIC atau Pelapor
+    // [MODIFIKASI] Dinonaktifkan: Notifikasi berkas/dokumen bukti dihapus tidak perlu dikirim
+    /*
     try {
       const laporan = await Laporan.findByPk(reportId);
       if (laporan) {
@@ -559,20 +562,21 @@ exports.deleteEvidence = async (req, res) => {
     } catch (notifErr) {
       console.error('Error kirim notifikasi delete evidence:', notifErr);
     }
+    */
 
     // File fisik dihapus setelah transaksi database berhasil.
     try {
         await deleteEvidenceFile(relativePath);
     } catch (fileError) {
         console.error(
-            'Evidence database terhapus, tetapi file fisik gagal dihapus:',
+            'Bukti database terhapus, tetapi file fisik gagal dihapus:',
             fileError
         );
     }
 
     return res.status(200).json({
       status: 'success',
-      message: 'Evidence berhasil dihapus'
+      message: 'Bukti berhasil dihapus'
     });
 
   } catch (error) {
